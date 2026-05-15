@@ -173,6 +173,8 @@ class MainWindow(QMainWindow):
         if dlg.exec_() != AddGameDialog.Accepted:
             return
         g = dlg.game()
+        if g is None:
+            return
         updated = self._manual_games + [
             {'name': g['name'], 'path': g['path'], 'exe': g['exe']}
         ]
