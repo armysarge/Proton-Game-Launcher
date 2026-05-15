@@ -52,3 +52,30 @@ def _load_config(base_dir: Path) -> dict:
         return json.loads(config_file.read_text())
     except (json.JSONDecodeError, OSError):
         return {}
+
+
+def load_manual_games(base_dir: Path) -> list[dict]:
+    games_file = base_dir / 'games.json'
+    if not games_file.exists():
+        return []
+    try:
+        entries = json.loads(games_file.read_text())
+        return [
+            {
+                'name': e['name'],
+                'path': Path(e['path']),
+                'exe': Path(e['exe']),
+            }
+            for e in entries
+        ]
+    except (json.JSONDecodeError, OSError, KeyError, TypeError):
+        return []
+
+
+def save_manual_games(base_dir: Path, games: list[dict]) -> None:
+    games_file = base_dir / 'games.json'
+    entries = [
+        {'name': g['name'], 'path': str(g['path']), 'exe': str(g['exe'])}
+        for g in games
+    ]
+    games_file.write_text(json.dumps(entries, indent=2))

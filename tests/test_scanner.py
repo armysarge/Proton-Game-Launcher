@@ -1,5 +1,6 @@
 import json
-from scanner import find_games, detect_exe, EXCLUDE_PATTERN
+from pathlib import Path
+from scanner import find_games, detect_exe, EXCLUDE_PATTERN, load_manual_games, save_manual_games
 
 
 def test_exclude_pattern_blocks_setup_variants():
@@ -101,3 +102,32 @@ def test_find_games_sorted_alphabetically(tmp_path):
         (d / 'game.exe').write_bytes(b'x')
     names = [g['name'] for g in find_games(tmp_path)]
     assert names == sorted(names)
+
+
+def test_load_manual_games_valid(tmp_path):
+    (tmp_path / 'games.json').write_text(json.dumps([
+        {'name': 'Halo CE', 'path': '/games/Halo CE', 'exe': '/games/Halo CE/halo.exe'}
+    ]))
+    result = load_manual_games(tmp_path)
+    assert len(result) == 1
+    assert result[0]['name'] == 'Halo CE'
+    assert result[0]['path'] == Path('/games/Halo CE')
+    assert result[0]['exe'] == Path('/games/Halo CE/halo.exe')
+
+
+def test_load_manual_games_missing_file(tmp_path):
+    assert load_manual_games(tmp_path) == []
+
+
+def test_load_manual_games_malformed_json(tmp_path):
+    (tmp_path / 'games.json').write_text('not valid json')
+    assert load_manual_games(tmp_path) == []
+
+
+def test_save_load_roundtrip(tmp_path):
+    games = [{'name': 'Diablo II', 'path': Path('/games/D2'), 'exe': Path('/games/D2/Diablo II.exe')}]
+    save_manual_games(tmp_path, games)
+    result = load_manual_games(tmp_path)
+    assert result[0]['name'] == 'Diablo II'
+    assert result[0]['path'] == Path('/games/D2')
+    assert result[0]['exe'] == Path('/games/D2/Diablo II.exe')
