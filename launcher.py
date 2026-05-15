@@ -175,6 +175,11 @@ class MainWindow(QMainWindow):
         g = dlg.game()
         if g is None:
             return
+        existing_names = {game['name'] for game in self._games}
+        if g['name'] in existing_names:
+            QMessageBox.warning(self, 'Duplicate Name',
+                f"A game named '{g['name']}' already exists.")
+            return
         updated = self._manual_games + [
             {'name': g['name'], 'path': g['path'], 'exe': g['exe']}
         ]
@@ -183,7 +188,6 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
             return
-        self._manual_games = updated
         self._load_games()
 
     def _on_remove_game(self, name: str):
@@ -200,7 +204,6 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
             return
-        self._manual_games = updated
         self._load_games()
 
     def _on_launch(self, game: dict):

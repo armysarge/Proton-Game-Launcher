@@ -65,7 +65,7 @@ def load_manual_games(base_dir: Path) -> list[dict]:
     return [x for x in (_parse_manual_entry(e) for e in entries) if x is not None]
 
 
-def _parse_manual_entry(e: dict):
+def _parse_manual_entry(e: dict) -> 'dict | None':
     try:
         return {'name': e['name'], 'path': Path(e['path']), 'exe': Path(e['exe'])}
     except (KeyError, TypeError):
