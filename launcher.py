@@ -13,7 +13,8 @@ from PyQt5.QtWidgets import (
 from card import GameCard
 from cover import CoverFetcher
 from runner import launch
-from scanner import find_games
+from dialog import AddGameDialog
+from scanner import find_games, load_manual_games, save_manual_games
 
 BASE_DIR = Path(__file__).parent
 PROTON_BIN = BASE_DIR / 'proton' / 'proton'
@@ -30,6 +31,7 @@ class MainWindow(QMainWindow):
         self._games: List[dict] = []
         self._cards: Dict[str, GameCard] = {}
         self._cover_cache: Dict[str, QPixmap] = {}
+        self._manual_games: List[dict] = []
         self._fetcher: Optional[CoverFetcher] = None
         self._setup_ui()
         self._load_games()
@@ -85,10 +87,18 @@ class MainWindow(QMainWindow):
         )
         refresh.clicked.connect(self._load_games)
 
+        add_game = QPushButton('+ Add Game')
+        add_game.setStyleSheet(
+            'background: #1a3a1a; color: #7ec87e; border: 1px solid #2a5a2a;'
+            ' border-radius: 4px; padding: 4px 10px;'
+        )
+        add_game.clicked.connect(self._on_add_game)
+
         lay.addWidget(title)
         lay.addStretch()
         lay.addWidget(self._search)
         lay.addWidget(refresh)
+        lay.addWidget(add_game)
         return bar
 
     # ------------------------------------------------------------------ Data
@@ -98,7 +108,16 @@ class MainWindow(QMainWindow):
             self._fetcher.terminate()
             self._fetcher.wait()
 
-        self._games = find_games(BASE_DIR)
+        auto = find_games(BASE_DIR)
+        self._manual_games = load_manual_games(BASE_DIR)
+
+        auto_names = {g['name'] for g in auto}
+        manual_tagged = [
+            {**g, 'manual': True}
+            for g in self._manual_games
+            if g['name'] not in auto_names
+        ]
+        self._games = auto + manual_tagged
         self._populate_grid()
         self._update_status()
         self._fetch_covers()
@@ -111,8 +130,9 @@ class MainWindow(QMainWindow):
         self._cards.clear()
 
         for i, game in enumerate(self._games):
-            card = GameCard(game)
+            card = GameCard(game, is_manual=game.get('manual', False))
             card.clicked.connect(self._on_launch)
+            card.remove_requested.connect(self._on_remove_game)
             if game['name'] in self._cover_cache:
                 card.set_cover(self._cover_cache[game['name']])
             self._cards[game['name']] = card
@@ -147,6 +167,39 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     # ------------------------------------------------------------------ Launch
+
+    def _on_add_game(self):
+        dlg = AddGameDialog(self)
+        if dlg.exec_() != AddGameDialog.Accepted:
+            return
+        g = dlg.game()
+        updated = self._manual_games + [
+            {'name': g['name'], 'path': g['path'], 'exe': g['exe']}
+        ]
+        try:
+            save_manual_games(BASE_DIR, updated)
+        except OSError as e:
+            QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
+            return
+        self._manual_games = updated
+        self._load_games()
+
+    def _on_remove_game(self, name: str):
+        reply = QMessageBox.question(
+            self, 'Remove Game',
+            f"Remove '{name}' from launcher? Files will not be deleted.",
+            QMessageBox.Yes | QMessageBox.Cancel,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        updated = [g for g in self._manual_games if g['name'] != name]
+        try:
+            save_manual_games(BASE_DIR, updated)
+        except OSError as e:
+            QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
+            return
+        self._manual_games = updated
+        self._load_games()
 
     def _on_launch(self, game: dict):
         if not game['exe']:
