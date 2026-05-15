@@ -1,6 +1,4 @@
 import json
-import pytest
-from pathlib import Path
 from scanner import find_games, detect_exe, EXCLUDE_PATTERN
 
 

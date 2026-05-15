@@ -3,8 +3,8 @@ import re
 from pathlib import Path
 
 EXCLUDE_PATTERN = re.compile(
-    r'^(unins.*|setup.*|install.*|.*redist.*|unitycrashandler.*'
-    r'|dxsetup.*|vcredist.*|dotnetfx.*|.*crash.*)\.exe$',
+    r'^(unins.*|setup.*|install.*|.*redist.*|unitycrashhandler.*'
+    r'|dxsetup.*|dotnetfx.*)\.exe$',
     re.IGNORECASE,
 )
 
@@ -36,9 +36,11 @@ def _find_candidates(game_dir: Path) -> list[Path]:
 def _pick_exe(base_dir: Path, game_name: str, candidates: list[Path]) -> Path:
     config = _load_config(base_dir)
     if game_name in config:
-        override = base_dir / config[game_name]['exe']
-        if override.exists():
-            return override
+        override_rel = config[game_name].get('exe')
+        if override_rel:
+            override = base_dir / override_rel
+            if override.exists():
+                return override
     return max(candidates, key=lambda f: f.stat().st_size)
 
 
