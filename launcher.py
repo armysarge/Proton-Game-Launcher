@@ -95,13 +95,13 @@ class MainWindow(QMainWindow):
         )
         add_game.clicked.connect(self._on_add_game)
 
-        menu = QMenu(bar)
-        menu.setStyleSheet(
+        self._more_menu = QMenu(bar)
+        self._more_menu.setStyleSheet(
             'QMenu { background: #222; color: #ccc; border: 1px solid #333; padding: 4px; }'
             'QMenu::item { padding: 4px 16px; }'
             'QMenu::item:selected { background: #2a4a2a; }'
         )
-        shortcut_action = menu.addAction('Create Desktop Shortcut…')
+        shortcut_action = self._more_menu.addAction('Create Desktop Shortcut…')
         shortcut_action.triggered.connect(self._on_create_shortcut)
 
         more_btn = QPushButton('⋮')
@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
             ' border-radius: 4px; padding: 4px 10px; font-size: 14px;'
         )
         more_btn.clicked.connect(
-            lambda: menu.exec_(more_btn.mapToGlobal(more_btn.rect().bottomLeft()))
+            lambda: self._more_menu.exec_(more_btn.mapToGlobal(more_btn.rect().bottomLeft()))
         )
 
         lay.addWidget(title)
