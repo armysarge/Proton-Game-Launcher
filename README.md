@@ -22,6 +22,8 @@ Every subsequent run opens the launcher immediately.
 
 ## Adding Games
 
+### Auto-detected
+
 Drop any Windows game folder directly into the launcher directory:
 
 ```
@@ -35,6 +37,16 @@ proton-launcher/
 ```
 
 The launcher scans for folders containing `.exe` files on startup. Hit **↺ Refresh** to pick up newly added games without restarting.
+
+### Manually added
+
+Click **+ Add Game** in the toolbar to add a game from anywhere on your filesystem — no need to move files into the launcher directory.
+
+1. Click **Browse…** next to Game Folder and select the game's folder
+2. The name and executable are auto-detected — edit either if needed
+3. Click **Add Game**
+
+Manually-added games show a small **manual** badge in their card. Hover the card and click **×** to remove it from the launcher (files are not deleted). Entries are saved to `games.json` in the launcher root.
 
 ## Cover Art
 
@@ -66,7 +78,10 @@ proton-launcher/
 ├── scanner.py          ← game discovery
 ├── cover.py            ← cover art fetcher
 ├── card.py             ← game card widget
+├── dialog.py           ← Add Game dialog
 ├── runner.py           ← Proton launch helper
+├── requirements.txt    ← Python dependencies
+├── games.json          ← manually-added games (auto-created, gitignored)
 ├── .venv/              ← Python environment (auto-created)
 ├── proton/             ← Proton-GE (auto-downloaded)
 ├── .cache/covers/      ← cached cover images

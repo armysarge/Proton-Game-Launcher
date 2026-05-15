@@ -8,7 +8,7 @@ PROTON_DIR="$SCRIPT_DIR/proton"
 if [ ! -f "$VENV/bin/python" ]; then
     echo "Setting up Python environment (first run)..."
     python3 -m venv "$VENV"
-    "$VENV/bin/pip" install --quiet PyQt5 requests pytest
+    "$VENV/bin/pip" install --quiet -r "$SCRIPT_DIR/requirements.txt"
 fi
 
 # --- Proton-GE download ---
