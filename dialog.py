@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Optional
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QDialog, QFileDialog, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QVBoxLayout,
@@ -106,7 +105,6 @@ class AddGameDialog(QDialog):
         self._name_edit.setText(Path(folder).name)
         exe = detect_exe(Path(folder))
         self._exe_edit.setText(str(exe) if exe else '')
-        self._validate()
 
     def _browse_exe(self):
         start = self._folder_edit.text() or str(Path.home())
@@ -115,7 +113,6 @@ class AddGameDialog(QDialog):
         )
         if path:
             self._exe_edit.setText(path)
-            self._validate()
 
     def _validate(self):
         folder = self._folder_edit.text().strip()
