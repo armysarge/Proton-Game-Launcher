@@ -4,6 +4,7 @@ import shortcut as sc
 
 def test_desktop_content_fields(tmp_path):
     content = sc._desktop_content(tmp_path)
+    assert content.startswith('[Desktop Entry]\n')
     assert 'Name=Proton Game Launcher' in content
     assert f'Exec=bash "{tmp_path / "run.sh"}"' in content
     assert 'Icon=applications-games' in content
