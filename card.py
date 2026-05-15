@@ -102,7 +102,7 @@ class GameCard(QWidget):
         self.update()
 
     def mouseMoveEvent(self, event):
-        if self._is_manual and self._hovered:
+        if self._is_manual:
             hovered = REMOVE_BTN.contains(event.pos())
             if hovered != self._remove_hovered:
                 self._remove_hovered = hovered
