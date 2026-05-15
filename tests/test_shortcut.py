@@ -5,7 +5,7 @@ import shortcut as sc
 def test_desktop_content_fields(tmp_path):
     content = sc._desktop_content(tmp_path)
     assert 'Name=Proton Game Launcher' in content
-    assert f'Exec=bash {tmp_path / "run.sh"}' in content
+    assert f'Exec=bash "{tmp_path / "run.sh"}"' in content
     assert 'Icon=applications-games' in content
     assert 'Type=Application' in content
     assert 'Categories=Game;' in content
@@ -52,3 +52,9 @@ def test_create_shortcut_write_failure(tmp_path, monkeypatch):
     assert not ok
     assert err != ''
     desktop_dir.chmod(0o755)  # restore for cleanup
+
+
+def test_desktop_content_exec_quotes_path_with_spaces(tmp_path):
+    spaced = tmp_path / 'my games' / 'proton-launcher'
+    content = sc._desktop_content(spaced)
+    assert f'Exec=bash "{spaced / "run.sh"}"' in content

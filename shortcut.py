@@ -27,7 +27,7 @@ def _desktop_content(launcher_dir: Path) -> str:
         '[Desktop Entry]\n'
         'Name=Proton Game Launcher\n'
         'Comment=Run Windows games via Proton-GE\n'
-        f'Exec=bash {run_sh}\n'
+        f'Exec=bash "{run_sh}"\n'
         'Icon=applications-games\n'
         'Type=Application\n'
         'Categories=Game;\n'
