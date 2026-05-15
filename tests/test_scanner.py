@@ -13,6 +13,8 @@ def test_exclude_pattern_blocks_setup_variants():
     assert EXCLUDE_PATTERN.match('vcredist_x64.exe')
     assert EXCLUDE_PATTERN.match('dotnetfx35.exe')
     assert EXCLUDE_PATTERN.match('dxsetup.exe')
+    assert EXCLUDE_PATTERN.match('installer.exe')
+    assert EXCLUDE_PATTERN.match('msredist.exe')
 
 
 def test_exclude_pattern_allows_game_exe():
