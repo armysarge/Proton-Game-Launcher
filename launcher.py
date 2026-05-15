@@ -5,8 +5,8 @@ from typing import Dict, List, Optional
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
-    QApplication, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QMessageBox, QPushButton, QScrollArea,
+    QApplication, QCheckBox, QDialog, QGridLayout, QHBoxLayout, QLabel,
+    QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QScrollArea,
     QVBoxLayout, QWidget,
 )
 
@@ -15,6 +15,7 @@ from cover import CoverFetcher
 from runner import launch
 from dialog import AddGameDialog
 from scanner import find_games, load_manual_games, save_manual_games
+from shortcut import create_shortcut
 
 BASE_DIR = Path(__file__).parent
 PROTON_BIN = BASE_DIR / 'proton' / 'proton'
@@ -94,11 +95,30 @@ class MainWindow(QMainWindow):
         )
         add_game.clicked.connect(self._on_add_game)
 
+        menu = QMenu(bar)
+        menu.setStyleSheet(
+            'QMenu { background: #222; color: #ccc; border: 1px solid #333; padding: 4px; }'
+            'QMenu::item { padding: 4px 16px; }'
+            'QMenu::item:selected { background: #2a4a2a; }'
+        )
+        shortcut_action = menu.addAction('Create Desktop Shortcut…')
+        shortcut_action.triggered.connect(self._on_create_shortcut)
+
+        more_btn = QPushButton('⋮')
+        more_btn.setStyleSheet(
+            'background: #2a2a2a; color: #888; border: 1px solid #333;'
+            ' border-radius: 4px; padding: 4px 10px; font-size: 14px;'
+        )
+        more_btn.clicked.connect(
+            lambda: menu.exec_(more_btn.mapToGlobal(more_btn.rect().bottomLeft()))
+        )
+
         lay.addWidget(title)
         lay.addStretch()
         lay.addWidget(self._search)
         lay.addWidget(refresh)
         lay.addWidget(add_game)
+        lay.addWidget(more_btn)
         return bar
 
     # ------------------------------------------------------------------ Data
@@ -205,6 +225,68 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
             return
         self._load_games()
+
+    def _on_create_shortcut(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle('Create Desktop Shortcut')
+        dlg.setStyleSheet('background: #1a1a1a; color: #e2e2e2;')
+        dlg.setMinimumWidth(340)
+
+        layout = QVBoxLayout(dlg)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        lbl = QLabel('Create shortcut for Proton Game Launcher:')
+        lbl.setStyleSheet('color: #ccc;')
+
+        desktop_cb = QCheckBox('Desktop  (~/Desktop/)')
+        desktop_cb.setChecked(True)
+        desktop_cb.setStyleSheet('color: #ccc;')
+
+        app_menu_cb = QCheckBox('App menu  (~/.local/share/applications/)')
+        app_menu_cb.setChecked(True)
+        app_menu_cb.setStyleSheet('color: #ccc;')
+
+        create_btn = QPushButton('Create')
+        create_btn.setStyleSheet(
+            'background: #1a3a1a; color: #7ec87e; border: 1px solid #2a5a2a;'
+            ' border-radius: 4px; padding: 6px 14px;'
+        )
+        cancel_btn = QPushButton('Cancel')
+        cancel_btn.setStyleSheet(
+            'background: #222; color: #888; border: 1px solid #333;'
+            ' border-radius: 4px; padding: 6px 14px;'
+        )
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(create_btn)
+
+        layout.addWidget(lbl)
+        layout.addWidget(desktop_cb)
+        layout.addWidget(app_menu_cb)
+        layout.addLayout(btn_row)
+
+        def _update_btn():
+            create_btn.setEnabled(desktop_cb.isChecked() or app_menu_cb.isChecked())
+
+        desktop_cb.toggled.connect(_update_btn)
+        app_menu_cb.toggled.connect(_update_btn)
+        cancel_btn.clicked.connect(dlg.reject)
+
+        def _do_create():
+            ok, err = create_shortcut(
+                BASE_DIR, desktop_cb.isChecked(), app_menu_cb.isChecked()
+            )
+            if ok:
+                QMessageBox.information(dlg, 'Shortcut Created', 'Shortcut created successfully.')
+                dlg.accept()
+            else:
+                QMessageBox.critical(dlg, 'Error', f'Could not create shortcut:\n{err}')
+
+        create_btn.clicked.connect(_do_create)
+        dlg.exec_()
 
     def _on_launch(self, game: dict):
         if not game['exe']:
