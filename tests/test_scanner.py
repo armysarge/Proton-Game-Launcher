@@ -131,3 +131,13 @@ def test_save_load_roundtrip(tmp_path):
     assert result[0]['name'] == 'Diablo II'
     assert result[0]['path'] == Path('/games/D2')
     assert result[0]['exe'] == Path('/games/D2/Diablo II.exe')
+
+
+def test_load_manual_games_skips_malformed_entries(tmp_path):
+    (tmp_path / 'games.json').write_text(json.dumps([
+        {'name': 'Halo CE', 'path': '/games/Halo CE', 'exe': '/games/Halo CE/halo.exe'},
+        {'name': 'Bad Entry'},  # missing path and exe
+    ]))
+    result = load_manual_games(tmp_path)
+    assert len(result) == 1
+    assert result[0]['name'] == 'Halo CE'
