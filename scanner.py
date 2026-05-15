@@ -8,11 +8,15 @@ EXCLUDE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+_SKIP_DIRS = frozenset({'proton', 'docs', 'tests'})
+
 
 def find_games(base_dir: Path) -> list[dict]:
     games = []
     for entry in sorted(base_dir.iterdir()):
         if not entry.is_dir() or entry.name.startswith('.'):
+            continue
+        if entry.name in _SKIP_DIRS:
             continue
         candidates = _find_candidates(entry)
         if not candidates:

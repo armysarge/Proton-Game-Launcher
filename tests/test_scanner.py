@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from scanner import find_games, detect_exe, EXCLUDE_PATTERN, load_manual_games, save_manual_games
+from scanner import find_games, detect_exe, EXCLUDE_PATTERN, _SKIP_DIRS, load_manual_games, save_manual_games
 
 
 def test_exclude_pattern_blocks_setup_variants():
@@ -67,6 +67,14 @@ def test_detect_exe_respects_launcher_json_override(tmp_path):
     config = {'TestGame': {'exe': 'TestGame/alt.exe'}}
     (tmp_path / '.launcher.json').write_text(json.dumps(config))
     assert detect_exe(game) == game / 'alt.exe'
+
+
+def test_find_games_skips_project_dirs(tmp_path):
+    for name in _SKIP_DIRS:
+        d = tmp_path / name
+        d.mkdir()
+        (d / 'game.exe').write_bytes(b'x' * 100)
+    assert find_games(tmp_path) == []
 
 
 def test_find_games_skips_hidden_dirs(tmp_path):
