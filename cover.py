@@ -1,3 +1,4 @@
+import re as _re
 from pathlib import Path
 
 import requests
@@ -9,7 +10,8 @@ _STEAM_ART = 'https://cdn.akamai.steamstatic.com/steam/apps/{appid}/library_600x
 
 
 def cover_cache_path(cache_dir: Path, game_name: str) -> Path:
-    return cache_dir / f'{game_name}.jpg'
+    safe = _re.sub(r'[^\w\s\-.]', '_', game_name)
+    return cache_dir / f'{safe}.jpg'
 
 
 def steam_art_url(appid: int) -> str:

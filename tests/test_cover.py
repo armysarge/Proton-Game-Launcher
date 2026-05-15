@@ -17,7 +17,4 @@ def test_steam_art_url():
 
 
 def test_steam_search_params():
-    params = steam_search_params('Halo CE')
-    assert params['term'] == 'Halo CE'
-    assert params['cc'] == 'us'
-    assert params['l'] == 'en'
+    assert steam_search_params('Halo CE') == {'term': 'Halo CE', 'cc': 'us', 'l': 'en'}
