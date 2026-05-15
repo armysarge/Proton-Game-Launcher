@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import Dict, List, Optional
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
@@ -26,10 +27,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('Proton Game Launcher')
         self.setMinimumSize(860, 580)
-        self._games: list[dict] = []
-        self._cards: dict[str, GameCard] = {}
-        self._cover_cache: dict[str, QPixmap] = {}
-        self._fetcher: CoverFetcher | None = None
+        self._games: List[dict] = []
+        self._cards: Dict[str, GameCard] = {}
+        self._cover_cache: Dict[str, QPixmap] = {}
+        self._fetcher: Optional[CoverFetcher] = None
         self._setup_ui()
         self._load_games()
 
@@ -118,6 +119,8 @@ class MainWindow(QMainWindow):
             self._grid.addWidget(card, i // COLS, i % COLS)
 
     def _fetch_covers(self):
+        if not self._games:
+            return
         self._fetcher = CoverFetcher(self._games, COVER_CACHE)
         self._fetcher.cover_ready.connect(self._on_cover_ready)
         self._fetcher.start()
@@ -136,6 +139,12 @@ class MainWindow(QMainWindow):
         version_file = PROTON_BIN.parent / 'version'
         version = version_file.read_text().strip() if version_file.exists() else 'Proton-GE not installed'
         self.statusBar().showMessage(f'  {len(self._games)} games    {version}')
+
+    def closeEvent(self, event):
+        if self._fetcher and self._fetcher.isRunning():
+            self._fetcher.terminate()
+            self._fetcher.wait()
+        super().closeEvent(event)
 
     # ------------------------------------------------------------------ Launch
 
