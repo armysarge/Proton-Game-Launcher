@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPixmap
 from PyQt5.QtWidgets import QWidget
@@ -13,7 +15,7 @@ class GameCard(QWidget):
     def __init__(self, game: dict, parent=None):
         super().__init__(parent)
         self._game = game
-        self._pixmap: QPixmap | None = None
+        self._pixmap: Optional[QPixmap] = None
         self._hovered = False
         self.setFixedSize(CARD_W, CARD_H)
         self.setCursor(Qt.PointingHandCursor)
@@ -40,17 +42,22 @@ class GameCard(QWidget):
         # label bar
         p.fillRect(0, img_h, CARD_W, LABEL_H, QColor('#1a1a1a'))
         p.setPen(QColor('#5b9bd5' if self._hovered else '#e2e2e2'))
-        p.setFont(QFont('sans-serif', 8, QFont.Bold))
-        p.drawText(5, img_h, CARD_W - 10, LABEL_H, Qt.AlignLeft | Qt.AlignVCenter, self._game['name'])
+        font = QFont('sans-serif', 8, QFont.Bold)
+        p.setFont(font)
+        fm = p.fontMetrics()
+        elided = fm.elidedText(self._game.get('name', ''), Qt.ElideRight, CARD_W - 10)
+        p.drawText(5, img_h, CARD_W - 10, LABEL_H, Qt.AlignLeft | Qt.AlignVCenter, elided)
 
         # hover border
         if self._hovered:
             p.setPen(QColor('#5b9bd5'))
-            p.drawRect(0, 0, CARD_W - 1, CARD_H - 1)
+            p.drawRect(1, 1, CARD_W - 2, CARD_H - 2)
+
+        p.end()
 
     def _paint_placeholder(self, p: QPainter, img_h: int):
         p.fillRect(0, 0, CARD_W, img_h, QColor('#1a2a3a'))
-        initials = ''.join(w[0].upper() for w in self._game['name'].split()[:2])
+        initials = ''.join(w[0].upper() for w in self._game.get('name', '').split()[:2])
         p.setPen(QColor('#5b9bd5'))
         p.setFont(QFont('sans-serif', 28, QFont.Bold))
         p.drawText(0, 0, CARD_W, img_h, Qt.AlignCenter, initials)
