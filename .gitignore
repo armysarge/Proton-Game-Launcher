@@ -1,0 +1,8 @@
+.venv/
+proton/
+.compat/
+.cache/
+.superpowers/
+__pycache__/
+*.pyc
+*.pyo
