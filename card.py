@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PyQt5.QtCore import Qt, QRect, pyqtSignal
+from PyQt5.QtCore import Qt, QRect, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPixmap
 from PyQt5.QtWidgets import QWidget
 
@@ -21,6 +21,11 @@ class GameCard(QWidget):
         self._pixmap: Optional[QPixmap] = None
         self._hovered = False
         self._remove_hovered = False
+        self._state: str = 'normal'
+        self._dot_count: int = 0
+        self._dot_timer = QTimer(self)
+        self._dot_timer.setInterval(400)
+        self._dot_timer.timeout.connect(self._tick_dots)
         self.setFixedSize(CARD_W, CARD_H)
         self.setCursor(Qt.PointingHandCursor)
         if is_manual:
@@ -34,6 +39,24 @@ class GameCard(QWidget):
         )
         self.update()
 
+    def set_state(self, state: str):
+        self._state = state
+        if state == 'starting':
+            self._dot_count = 0
+            self._dot_timer.start()
+            self.setCursor(Qt.ForbiddenCursor)
+        elif state == 'running':
+            self._dot_timer.stop()
+            self.setCursor(Qt.ForbiddenCursor)
+        else:
+            self._dot_timer.stop()
+            self.setCursor(Qt.PointingHandCursor)
+        self.update()
+
+    def _tick_dots(self):
+        self._dot_count = (self._dot_count + 1) % 4
+        self.update()
+
     def paintEvent(self, _event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -44,6 +67,18 @@ class GameCard(QWidget):
             p.drawPixmap(0, 0, CARD_W, img_h, self._pixmap)
         else:
             self._paint_placeholder(p, img_h)
+
+        # state overlay
+        if self._state in ('starting', 'running'):
+            p.fillRect(0, 0, CARD_W, img_h, QColor(0, 0, 0, 160))
+            p.setFont(QFont('sans-serif', 9, QFont.Bold))
+            if self._state == 'starting':
+                p.setPen(QColor('#ffffff'))
+                text = 'Starting' + '.' * self._dot_count
+            else:
+                p.setPen(QColor('#7ec87e'))
+                text = '● Running'
+            p.drawText(0, 0, CARD_W, img_h, Qt.AlignCenter, text)
 
         # remove button — manual cards, hover only
         if self._is_manual and self._hovered:
@@ -109,6 +144,8 @@ class GameCard(QWidget):
                 self.update()
 
     def mousePressEvent(self, event):
+        if self._state != 'normal':
+            return
         if event.button() == Qt.LeftButton:
             if self._is_manual and REMOVE_BTN.contains(event.pos()):
                 self.remove_requested.emit(self._game.get('name', ''))
