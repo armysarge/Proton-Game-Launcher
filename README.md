@@ -4,7 +4,7 @@ A self-contained launcher for running Windows games on Linux via standalone [Pro
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - Internet connection (first run only, to download Proton-GE and cover art)
 
 ## Getting Started
@@ -48,6 +48,16 @@ Click **+ Add Game** in the toolbar to add a game from anywhere on your filesyst
 
 Manually-added games show a small **manual** badge in their card. Hover the card and click **×** to remove it from the launcher (files are not deleted). Entries are saved to `games.json` in the launcher root.
 
+## Launching Games
+
+Click any game card to launch it via Proton-GE. While a game is running:
+
+- The card shows a **Starting…** overlay (animated dots) for the first 5 seconds, then switches to a **● Running** overlay
+- Clicking any other card is blocked — only one game can run at a time
+- The **Update Proton-GE** menu option is disabled until the game exits
+
+When the game process exits, the card returns to its normal state automatically.
+
 ## Cover Art
 
 Cover images are fetched automatically from the Steam store using the game folder name. They are cached in `.cache/covers/` — no API key needed.
@@ -68,6 +78,14 @@ To override which executable is launched for a game, create `.launcher.json` in 
 
 Paths are relative to the launcher root.
 
+## Updating Proton-GE
+
+Click **⋮ → Update Proton-GE…** to download and install the latest Proton-GE release. A progress dialog shows download and extraction status. The existing `proton/` directory is replaced in-place.
+
+## Desktop Shortcut
+
+Click **⋮ → Create Desktop Shortcut…** to add a launcher shortcut to your Desktop (`~/Desktop/`) and/or app menu (`~/.local/share/applications/`).
+
 ## Folder Structure
 
 ```
@@ -80,6 +98,8 @@ proton-launcher/
 ├── card.py             ← game card widget
 ├── dialog.py           ← Add Game dialog
 ├── runner.py           ← Proton launch helper
+├── proton_updater.py   ← Proton-GE download/update thread
+├── shortcut.py         ← desktop shortcut creator
 ├── requirements.txt    ← Python dependencies
 ├── games.json          ← manually-added games (auto-created, gitignored)
 ├── .venv/              ← Python environment (auto-created)
