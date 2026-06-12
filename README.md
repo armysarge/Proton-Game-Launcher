@@ -58,6 +58,14 @@ Click any game card to launch it via Proton-GE. While a game is running:
 
 When the game process exits, the card returns to its normal state automatically.
 
+## Right-Click Menu
+
+Right-click a game card (while it's not running) for:
+
+- **Launch** — same as clicking the card
+- **Install C++ Runtime…** — download and silently install a Visual C++ redistributable (2022, 2019, or 2017) into the game's Proton prefix, for games that fail to start with missing VC++ DLL errors
+- **Delete Game…** — permanently delete the game's entire folder from disk, after a confirmation dialog. If the game was manually added, its `games.json` entry is removed too. This cannot be undone.
+
 ## Cover Art
 
 Cover images are fetched automatically from the Steam store using the game folder name. They are cached in `.cache/covers/` — no API key needed.
