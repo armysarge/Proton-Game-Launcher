@@ -329,8 +329,8 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, 'Delete Failed', f"Could not delete '{game['name']}':\n{e}")
             return
-        if game.get('manual', False):
-            updated = [g for g in self._manual_games if g['name'] != game['name']]
+        updated = [g for g in self._manual_games if g['name'] != game['name']]
+        if len(updated) != len(self._manual_games):
             try:
                 save_manual_games(BASE_DIR, updated)
             except OSError as e:
