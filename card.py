@@ -2,7 +2,7 @@ from typing import Optional
 
 from PyQt5.QtCore import Qt, QRect, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QPainter, QPixmap
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QAction, QMenu, QWidget
 
 CARD_W = 150
 CARD_H = 230
@@ -13,6 +13,8 @@ REMOVE_BTN = QRect(CARD_W - 26, 6, 20, 20)
 class GameCard(QWidget):
     clicked = pyqtSignal(dict)
     remove_requested = pyqtSignal(str)
+    install_runtime_requested = pyqtSignal(dict)
+    delete_requested = pyqtSignal(dict)
 
     def __init__(self, game: dict, is_manual: bool = False, parent=None):
         super().__init__(parent)
@@ -151,3 +153,25 @@ class GameCard(QWidget):
                 self.remove_requested.emit(self._game.get('name', ''))
             else:
                 self.clicked.emit(self._game)
+
+    def contextMenuEvent(self, event):
+        if self._state != 'normal':
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            'QMenu { background: #222; color: #ccc; border: 1px solid #333; padding: 4px; }'
+            'QMenu::item { padding: 4px 16px; }'
+            'QMenu::item:selected { background: #2a4a2a; }'
+        )
+        launch_action = QAction('Launch', self)
+        launch_action.triggered.connect(lambda: self.clicked.emit(self._game))
+        runtime_action = QAction('Install C++ Runtime…', self)
+        runtime_action.triggered.connect(lambda: self.install_runtime_requested.emit(self._game))
+        delete_action = QAction('Delete Game…', self)
+        delete_action.triggered.connect(lambda: self.delete_requested.emit(self._game))
+        menu.addAction(launch_action)
+        menu.addSeparator()
+        menu.addAction(runtime_action)
+        menu.addSeparator()
+        menu.addAction(delete_action)
+        menu.exec_(event.globalPos())

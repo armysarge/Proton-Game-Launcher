@@ -12,6 +12,7 @@ def build_env(compat_path: Path) -> dict:
     env = os.environ.copy()
     env['STEAM_COMPAT_DATA_PATH'] = str(compat_path)
     env['STEAM_COMPAT_CLIENT_INSTALL_PATH'] = ''
+    env['PROTON_USE_WOW64'] = '1'
     return env
 
 

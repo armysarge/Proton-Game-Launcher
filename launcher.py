@@ -1,13 +1,15 @@
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import (
-    QApplication, QCheckBox, QDialog, QGridLayout, QHBoxLayout, QLabel,
-    QLineEdit, QMainWindow, QMenu, QMessageBox, QProgressBar, QPushButton,
-    QScrollArea, QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QComboBox, QDialog, QGridLayout, QHBoxLayout,
+    QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QProgressBar,
+    QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
 from card import GameCard
@@ -18,11 +20,78 @@ from scanner import find_games, load_manual_games, save_manual_games
 from shortcut import create_shortcut
 from proton_updater import ProtonUpdater
 
+VCRUN_PACKAGES = [
+    (
+        'vcrun2022',
+        'VC++ 2015–2022 (recommended)',
+        [('https://aka.ms/vs/17/release/vc_redist.x64.exe', 'vc_redist.x64.exe')],
+    ),
+    (
+        'vcrun2019',
+        'VC++ 2019',
+        [('https://aka.ms/vs/16/release/vc_redist.x64.exe', 'vc_redist2019.x64.exe')],
+    ),
+    (
+        'vcrun2017',
+        'VC++ 2017',
+        [('https://aka.ms/vs/15/release/vc_redist.x64.exe', 'vc_redist2017.x64.exe')],
+    ),
+]
+
 BASE_DIR = Path(__file__).parent
 PROTON_BIN = BASE_DIR / 'proton' / 'proton'
 COMPAT_DIR = BASE_DIR / '.compat'
 COVER_CACHE = BASE_DIR / '.cache' / 'covers'
 COLS = 5
+
+
+class VcrunInstaller(QThread):
+    progress = pyqtSignal(str)
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, label: str, installers: list, compat_path: Path, proton_bin: Path, parent=None):
+        super().__init__(parent)
+        self._label = label
+        self._installers = installers  # list of (url, filename)
+        self._compat_path = compat_path
+        self._proton_bin = proton_bin
+
+    def run(self):
+        import os
+        import tempfile
+        import urllib.request
+        import shutil as _shutil
+
+        tmp_dir = Path(tempfile.mkdtemp(prefix='proton-vcrun-'))
+        try:
+            env = os.environ.copy()
+            env['STEAM_COMPAT_DATA_PATH'] = str(self._compat_path)
+            env['STEAM_COMPAT_CLIENT_INSTALL_PATH'] = ''
+            env['PROTON_USE_WOW64'] = '1'
+
+            for url, filename in self._installers:
+                dest = tmp_dir / filename
+                self.progress.emit(f'Downloading {filename}…')
+                try:
+                    urllib.request.urlretrieve(url, dest)
+                except Exception as e:
+                    self.finished.emit(False, f'Download failed: {e}')
+                    return
+
+                self.progress.emit(f'Running {filename}…')
+                result = subprocess.run(
+                    [str(self._proton_bin), 'run', str(dest), '/install', '/quiet', '/norestart'],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode not in (0, 3010):  # 3010 = reboot required but OK
+                    self.finished.emit(False, result.stderr.strip() or result.stdout.strip() or f'Exit code {result.returncode}')
+                    return
+
+            self.finished.emit(True, self._label)
+        finally:
+            _shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 class MainWindow(QMainWindow):
@@ -165,6 +234,8 @@ class MainWindow(QMainWindow):
             card = GameCard(game, is_manual=game.get('manual', False))
             card.clicked.connect(self._on_launch)
             card.remove_requested.connect(self._on_remove_game)
+            card.install_runtime_requested.connect(self._on_install_runtime)
+            card.delete_requested.connect(self._on_delete_game)
             if game['name'] in self._cover_cache:
                 card.set_cover(self._cover_cache[game['name']])
             self._cards[game['name']] = card
@@ -236,6 +307,35 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
             return
+        self._load_games()
+
+    def _on_delete_game(self, game: dict):
+        if self._running_game == game['name']:
+            QMessageBox.information(self, 'Game Running',
+                f"'{game['name']}' is currently running and cannot be deleted.")
+            return
+        path = Path(game['path'])
+        reply = QMessageBox.warning(
+            self, 'Delete Game',
+            f"Permanently delete '{game['name']}'?\n\nThis will remove the entire folder:\n{path}\n\n"
+            'This cannot be undone.',
+            QMessageBox.Yes | QMessageBox.Cancel,
+            QMessageBox.Cancel,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        try:
+            shutil.rmtree(path)
+        except OSError as e:
+            QMessageBox.critical(self, 'Delete Failed', f"Could not delete '{game['name']}':\n{e}")
+            return
+        if game.get('manual', False):
+            updated = [g for g in self._manual_games if g['name'] != game['name']]
+            try:
+                save_manual_games(BASE_DIR, updated)
+            except OSError as e:
+                QMessageBox.critical(self, 'Save Failed', f'Could not save games.json:\n{e}')
+        self._cover_cache.pop(game['name'], None)
         self._load_games()
 
     def _on_create_shortcut(self):
@@ -343,6 +443,98 @@ class MainWindow(QMainWindow):
         updater.progress.connect(_on_progress)
         updater.finished.connect(_on_finished)
         updater.start()
+        dlg.exec_()
+
+    def _on_install_runtime(self, game: dict):
+        dlg = QDialog(self)
+        dlg.setWindowTitle('Install C++ Runtime')
+        dlg.setStyleSheet('background: #1a1a1a; color: #e2e2e2;')
+        dlg.setMinimumWidth(380)
+
+        layout = QVBoxLayout(dlg)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        lbl = QLabel(f'Select a Visual C++ runtime to install\ninto the prefix for <b>{game["name"]}</b>:')
+        lbl.setStyleSheet('color: #ccc;')
+
+        combo = QComboBox()
+        combo.setStyleSheet(
+            'background: #222; color: #ccc; border: 1px solid #333;'
+            ' border-radius: 4px; padding: 4px 8px;'
+        )
+        for _pkg, label, installers in VCRUN_PACKAGES:
+            combo.addItem(label, (label, installers))
+
+        status_lbl = QLabel('')
+        status_lbl.setStyleSheet('color: #888; font-size: 10px;')
+
+        progress_bar = QProgressBar()
+        progress_bar.setRange(0, 0)
+        progress_bar.setVisible(False)
+        progress_bar.setStyleSheet(
+            'QProgressBar { background: #222; border: 1px solid #333;'
+            ' border-radius: 4px; height: 12px; }'
+            'QProgressBar::chunk { background: #2a5a2a; }'
+        )
+
+        install_btn = QPushButton('Install')
+        install_btn.setStyleSheet(
+            'background: #1a3a1a; color: #7ec87e; border: 1px solid #2a5a2a;'
+            ' border-radius: 4px; padding: 6px 14px;'
+        )
+        cancel_btn = QPushButton('Cancel')
+        cancel_btn.setStyleSheet(
+            'background: #222; color: #888; border: 1px solid #333;'
+            ' border-radius: 4px; padding: 6px 14px;'
+        )
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(install_btn)
+
+        layout.addWidget(lbl)
+        layout.addWidget(combo)
+        layout.addWidget(status_lbl)
+        layout.addWidget(progress_bar)
+        layout.addLayout(btn_row)
+
+        cancel_btn.clicked.connect(dlg.reject)
+
+        def _do_install():
+            label, installers = combo.currentData()
+            install_btn.setEnabled(False)
+            cancel_btn.setEnabled(False)
+            combo.setEnabled(False)
+            progress_bar.setVisible(True)
+
+            compat_path = COMPAT_DIR / game['name']
+            compat_path.mkdir(parents=True, exist_ok=True)
+
+            installer = VcrunInstaller(
+                label, installers, compat_path, PROTON_BIN, parent=dlg
+            )
+
+            def _on_progress(msg):
+                status_lbl.setText(msg)
+
+            def _on_done(ok, msg):
+                progress_bar.setVisible(False)
+                dlg.accept()
+                if ok:
+                    QMessageBox.information(
+                        self, 'Runtime Installed',
+                        f'{msg} installed successfully for {game["name"]}.',
+                    )
+                else:
+                    QMessageBox.critical(self, 'Install Failed', f'Could not install runtime:\n{msg}')
+
+            installer.progress.connect(_on_progress)
+            installer.finished.connect(_on_done)
+            installer.start()
+
+        install_btn.clicked.connect(_do_install)
         dlg.exec_()
 
     def _on_launch(self, game: dict):
